@@ -4,19 +4,13 @@ import requests
 import sys
 import time
 from zipfile import ZipFile
+import wave
 
+# config speech server
 speech_base_url = f'https://{speech_region}.customvoice.api.speech.microsoft.com/api/texttospeech/3.1-preview1/batchsynthesis'
 
 speech_headers = {"Ocp-Apim-Subscription-Key": f"{speech_key}",
                   "Content-Type": "application/json"}
-
-
-def timeSleepAnimation(time_sleep):
-    for i in range(1, time_sleep):
-        sys.stdout.write(
-            f"\r {i * '.'}")
-        time.sleep(1)
-    print('\n')
 
 
 # post story to speech server
@@ -145,7 +139,13 @@ def multiPostStoriesToServer(chapter_start=0, chapter_count=0):
     return list_procesIDs
 
 
-def timeSleepAnimation(time_sleep):
+# create time sleep animation
+def timeSleepAnimation(time_sleep=5):
+    '''
+    This function create animation for time sleep
+
+    !time_sleep ``int`` : Seconds \n
+    '''
     for i in range(1, time_sleep):
         sys.stdout.write(
             f"\r {i * '.'}")
@@ -153,7 +153,17 @@ def timeSleepAnimation(time_sleep):
     print('\n')
 
 
+# check audio process status on server
 def checkAudioProcessStatus(chapter_title='', processID_url='', end_count=10, time_sleep=5):
+    '''
+    This function request server to check process ID status and return Audio URL if status successed
+
+    !chapter_title ``str``: the title of story \n
+    !processID_url ``str``: the process URL of audio on server \n
+    !end_count ``int``: the number of attempts. Default 10 attempts \n
+    !time_sleep ``int``: the time to sleep. Default 5s
+    '''
+    # check process ID and return Failed of process url is none
     if not processID_url:
         logging.error(
             'processID_url is empy. Please check post story to server')
@@ -168,32 +178,45 @@ def checkAudioProcessStatus(chapter_title='', processID_url='', end_count=10, ti
                 f'Stating request "{chapter_title}" to check process status')
             processID_respone = requests.get(
                 url=processID_url, headers=speech_headers)
+
+            # if request status code == 200 or 201, request success
             if processID_respone.status_code == 200 or processID_respone.status_code == 201:
                 logging.info(
                     f'Success request to check "{chapter_title}" process ID')
+
+                # if process recieve status is Success, return audio URL
                 if processID_respone.json()['status'] == 'Succeeded':
                     logging.info(f'"{chapter_title}" status is Succeeded')
                     return processID_respone.json()['outputs']['result']
+
+                # if process recieve status is Failed, check network and API, stop code
                 elif processID_respone.json()['status'] == 'Failed':
                     logging.error(
                         f' Faild to check "{chapter_title}" status: {processID_respone.status_code}')
                     logging.error(processID_respone.json())
                     return False
+
+                # if status is started or running, sleep 5s and try request again
                 logging.warning(
                     f" \"{chapter_title}\" status is: {processID_respone.json()['status']}. Try again ....")
                 timeSleepAnimation(time_sleep)
                 continue
             else:
+                # if process recieve http not 200 or 201, request is error. sleep 5s and try again
                 logging.info(
                     f'Faild to request "{chapter_title}" http to server with status code: {processID_respone.status_code}. Try again....')
                 timeSleepAnimation(time_sleep)
                 continue
+
+        # if have an error when request, sleeep 5s and try again
         except Exception as message:
             logging.warning('Someting went wrong. Try again...')
             logging.warning(message)
             timeSleepAnimation(time_sleep)
             pass
+
         finally:
+            # if try 10 times failed, stop code, return False
             request_count += 1
             if request_count >= end_count:
                 logging.error(
@@ -203,6 +226,10 @@ def checkAudioProcessStatus(chapter_title='', processID_url='', end_count=10, ti
 
 # download with congpress Bar
 def handleDownloadProgressBar(audio_response):
+    '''
+    This function create animation for download file
+    !audio_response ``byte``: this respone of requests function
+    '''
     total = int(audio_response.headers.get('content-length', 0))
     initChunk = 0
     audioZipContent = b''
@@ -219,41 +246,55 @@ def handleDownloadProgressBar(audio_response):
     print('\n')
     return audioZipContent
 
+
 # save auido result to zip folder
-
-
-def handleSaveStory(chapter_title, audio_content):
-
-    # remove all old zip file in zip folders
-    if len(os.listdir(zipFolders)) != 0:
-        for item in os.listdir(zipFolders):
-            os.remove(os.path.join(zipFolders, item))
-
+def handleSaveStory(chapter_title='', audio_content=b''):
+    '''
+    This function save story from audio request content
+    !chapter_title ``str``: name of story \n
+    !audio_content ``byte``: content from requests module
+    '''
     audio_name = chapter_title.removesuffix('.txt')
     audio_path = os.path.join(zipFolders, f'{audio_name}.zip')
+
+    # open zipfile and write file
     with open(audio_path, 'wb') as f:
         f.write(audio_content)
     logging.info(f'Saving "{audio_name}.zip" was success ')
     return True
 
 
-# download story was zip file
-def handleDownloadStory(chapter_title, audio_url, time_sleep=5):
+# download story and recieve zip file
+def handleDownloadStory(chapter_title='', audio_url='', time_sleep=5):
+    '''
+    This function request server to download audio as zip file
+    chapter_title ``str``: Name of story
+    audio_url ``str``: URL download story
+    time_sleep ``int``: time to sleep
+    '''
+
     audio_name = chapter_title.removesuffix('.txt')
     request_count = 0
     while True:
         try:
+            # request audio content from server
             logging.info(f'Downloading "{audio_name}" as zip file')
             audio_response = requests.get(
                 audio_url, headers=speech_headers, stream=True)
 
+            # check server recieve status and try again if status not 200 or 201
             if not audio_response.status_code == 200 or audio_response.status_code == 201:
                 logging.warning(
                     'Fail to connect server to download audio. Retry again...')
                 timeSleepAnimation(time_sleep)
                 continue
 
+            # download file with congpress bar
             audio_zipContent = handleDownloadProgressBar(audio_response)
+            if not audio_zipContent:
+                continue
+
+            # save audio as zip file if download success
             save_story_result = handleSaveStory(
                 chapter_title, audio_zipContent)
 
@@ -277,13 +318,11 @@ def handleDownloadStory(chapter_title, audio_url, time_sleep=5):
 
 
 # extract story from zip folder
-def handleExtractStory(chapter_title):
-
-    # remove all old audio file in folders
-    if len(os.listdir(audioFolders)) != 0:
-        for item in os.listdir(audioFolders):
-            os.remove(os.path.join(audioFolders, item))
-
+def handleExtractStory(chapter_title=''):
+    '''
+    This function extract audio from zip file and save to audio folder
+    !chapter_title ``str``: Name of story
+    '''
     try:
         audio_name = chapter_title.removesuffix('.txt')
         logging.info(
@@ -306,6 +345,21 @@ def handleExtractStory(chapter_title):
 
 # download story and extract to audio folder
 def downloadListStories():
+    '''
+    This function download multi audio from input folder
+
+    '''
+
+    # remove all old audio file in folders
+    if len(os.listdir(audioFolders)) != 0:
+        for item in os.listdir(audioFolders):
+            os.remove(os.path.join(audioFolders, item))
+
+    # remove all old zip file in zip folders
+    if len(os.listdir(zipFolders)) != 0:
+        for item in os.listdir(zipFolders):
+            os.remove(os.path.join(zipFolders, item))
+
     list_procesIDs = multiPostStoriesToServer()
     if not list_procesIDs:
         logging.error('Handling error. Stop code')
@@ -322,11 +376,78 @@ def downloadListStories():
 
         # extract zip file and save audio to audioFolders
         handleExtract_result = handleExtractStory(chapter_title)
-        if not audio_url:
+        if not handleExtract_result:
             logging.error(
                 f'An error white extract "{chapter_title}". Stop')
             return False
     return True
 
 
-downloadListStories()
+# combine audio file
+def handleCombine(audio_list=[]):
+    '''
+    This function combine auido from list 
+    !audio_list ``list``: List of audio 
+    '''
+    try:
+        # check list audio is not emtry
+        if len(audio_list) == 0:
+            logging.error('List audio is emtry. check audio from audioFolers')
+            return False
+
+        # set name after combine audio
+        first_data = '_'.join(audio_list[0].split('\\')[-1].split(' ')[0:3])
+        last_data = '_'.join(audio_list[-1].split('\\')[-1].split(' ')[0:3])
+        audio_out = f'{first_data} - {last_data}.wav'
+
+        # handle combine audio
+        logging.info(
+            f'Stating combine audio whith step over: {len(audio_list)}')
+        audio_data = []
+        for infile in audio_list:
+            w = wave.open(infile, 'rb')
+            audio_data.append([w.getparams(), w.readframes(w.getnframes())])
+            w.close()
+
+        output = wave.open(os.path.join(outputAudio, audio_out), 'wb')
+        output.setparams(audio_data[0][0])
+        for i in range(len(audio_data)):
+            output.writeframes(audio_data[i][1])
+        output.close()
+        logging.info(f'Combineing audio "{audio_out}" was success')
+    except Exception as message:
+        logging.error(f'Combineing audio "{audio_out}" was Fail')
+        logging.error(message)
+
+
+# combine audio and draw img
+def combileAduio(combine_count=3):
+    '''
+    This function combine audio and draw img with combine conts
+    !combine_count ``int``: number of combines, default 3
+    '''
+    if not os.path.exists(outputAudio):
+        os.mkdir(outputAudio)
+
+    if len(os.listdir(outputAudio)) != 0:
+        for item in os.listdir(outputAudio):
+            os.remove(os.path.join(outputAudio, item))
+
+    audio_list = []
+    current_count = 1
+    for audio_title in sorted_alphanumeric(os.listdir(audioFolders)):
+        audio_list.append(os.path.join(audioFolders, audio_title))
+        if current_count >= combine_count:
+            # combine audio
+            handleCombine(audio_list)
+            #
+            audio_list = []
+            current_count = 0
+        current_count += 1
+    if audio_list:
+        handleCombine(audio_list)
+
+
+if __name__ == '__main__':
+    # downloadListStories()
+    combileAduio(3)

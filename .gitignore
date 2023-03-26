@@ -1,5 +1,6 @@
-/audioFolders
-/imgFolders
-/inputFolders
-/temp
+/audioFolders/*
+/imgFolders/*
+/inputFolders/*
+/temp/*
 selenium.py
+/outputAudio/*

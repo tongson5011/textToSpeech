@@ -6,16 +6,19 @@ from global_functions import *
 # draw img
 
 
-def drawIMG(img_start=1, img_counts=1, img_step=4):
+def drawIMG(img_start=1, img_step=4):
+    '''
+    This function draw img from chapter and count of chapter and step over 
 
+    !img_start ``int``: Chapter start draw, default 1 \n
+    !img_step ``int``: Step image draw. Default 4
+    '''
     # delete all old img in folders
     if len(os.listdir(imgFolders)) != 0:
         for item in os.listdir(imgFolders):
             os.remove(os.path.join(imgFolders, item))
 
-    if img_counts == 0:
-        raise
-    img_end = img_start + img_counts * img_step
+    img_end = img_start + len(os.listdir(audioFolders))
     fontStyle = 'arial.ttf'
     for img_count in range(img_start, img_end, img_step):
         img_current = img_count + img_step - 1
@@ -30,4 +33,5 @@ def drawIMG(img_start=1, img_counts=1, img_step=4):
         # print(f'{img_count} - {img_current}')
 
 
-drawIMG(img_start=40, img_counts=5, img_step=4)
+if __name__ == '__main__':
+    drawIMG(img_start=20, img_step=3)

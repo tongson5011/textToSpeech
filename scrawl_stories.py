@@ -78,7 +78,14 @@ def handle_crawl_chapter(chapter_start, chapter_lists={}):
 
 
 # main function crwal data
-def crawl_stories(chapter_start=1, chapter_counts=0):
+def scrawl_stories(chapter_start=1, chapter_counts=0):
+    '''
+    This function scrawl story from chapter start and count of chapter scrawl
+
+    !chapter_start ``int``: Chapter start scrawl. Default chapter 1 , get all chapter if chapter start is 0 \n
+    !chapter_counts ``int``: Number of chapter to scrawl. Default 1,  get all chapter if chapter count is 0 
+    '''
+
     if len(os.listdir(inputFolders)) != 0:
         logging.info(F'Deleteing all file in inputFolders.....')
         for file in os.listdir(inputFolders):
@@ -90,4 +97,5 @@ def crawl_stories(chapter_start=1, chapter_counts=0):
     handle_crawl_chapter(chapter_start, chapter_lists)
 
 
-crawl_stories(chapter_start=20, chapter_counts=10)
+if __name__ == '__main__':
+    scrawl_stories(chapter_start=20, chapter_counts=10)
