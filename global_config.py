@@ -1,19 +1,19 @@
 import os
 
-
 # config API key
-speech_key = 'f5f5f46a17fd41aa8f1124db1d49892a'
+speech_key = '75042b7cd0a542738009d53541cd2686'
 speech_region = 'southeastasia'
 
 # config file and path
 PATH = os.getcwd()
-
 inputFolders = os.path.join(PATH, 'inputFolders')
-imgFolders = os.path.join(PATH, 'imgFolders')
 temp = os.path.join(PATH, 'temp')
 baseIMG = os.path.join(PATH, 'assest/imgs/baseIMG.png')
+imgFolders = os.path.join(PATH, 'imgFolders')
 zipFolders = os.path.join(PATH, 'temp\zipFolders')
 audioFolders = os.path.join(PATH, 'audioFolders')
+
+
 if not os.path.exists(inputFolders):
     os.mkdir(inputFolders)
 

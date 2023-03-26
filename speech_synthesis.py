@@ -11,7 +11,16 @@ speech_headers = {"Ocp-Apim-Subscription-Key": f"{speech_key}",
                   "Content-Type": "application/json"}
 
 
-def postStoryToSpeechServer(chapter_title='', chapter_content='', count_try=5, time_sleep=0.5):
+def timeSleepAnimation(time_sleep):
+    for i in range(1, time_sleep):
+        sys.stdout.write(
+            f"\r {i * '.'}")
+        time.sleep(1)
+    print('\n')
+
+
+# post story to speech server
+def postStoryToSpeechServer(chapter_title='', chapter_content='', count_try=5, time_sleep=5):
     '''
     This function post chapter content to speech server and get server process ID if server response success \n
 
@@ -76,7 +85,7 @@ def postStoryToSpeechServer(chapter_title='', chapter_content='', count_try=5, t
             logging.warning(
                 f'Fail to post "{chapter_title}" to speech server with status code: {response.status_code}. Try again....')
             logging.warning(f'{response.json()}')
-            time.sleep(time_sleep)
+            timeSleepAnimation(time_sleep)
 
         # an error when post chapter content to server is failed. Show log, sleep 5s and try again....
         except Exception as message:
@@ -96,48 +105,7 @@ def postStoryToSpeechServer(chapter_title='', chapter_content='', count_try=5, t
                 return False
 
 
-def checkAudioProcessStatus(chapter_title, processID_url):
-    processID_url = f'{speech_base_url}/{processID_url}'
-    request_count = 0
-    while True:
-        try:
-            logging.info(
-                f'Stating request "{chapter_title}" to check process status')
-            processID_respone = requests.get(
-                url=processID_url, headers=speech_headers)
-            if processID_respone.status_code == 200 or processID_respone.status_code == 201:
-                logging.info(
-                    f'Success request to check "{chapter_title}" process ID')
-                if processID_respone.json()['status'] == 'Succeeded':
-                    logging.info(f'"{chapter_title}" status is Succeeded')
-                    return processID_respone.json()['outputs']['result']
-                elif processID_respone.json()['status'] == 'Failed':
-                    logging.error(
-                        f' Faild to check "{chapter_title}" status: {processID_respone.status_code}')
-                    logging.error(processID_respone.json())
-                    break
-                logging.warning(
-                    f" \"{chapter_title}\" status is: {processID_respone.json()['status']}. Try again ....")
-                time.sleep(5)
-                continue
-            else:
-                logging.info(
-                    f'Faild to request "{chapter_title}" http to server with status code: {processID_respone.status_code}. Try again....')
-                time.sleep(5)
-                continue
-        except Exception as message:
-            logging.warning('Someting went wrong. Try again...')
-            logging.warning(message)
-            time.sleep(2)
-            pass
-        finally:
-            request_count += 1
-            if request_count >= 10:
-                logging.error(
-                    'Too many attempt faild to request. Check API, network and try again')
-                return False
-
-
+# milti post story to server
 def multiPostStoriesToServer(chapter_start=0, chapter_count=0):
     chapter_current = 0
     list_procesIDs = {}
@@ -145,7 +113,7 @@ def multiPostStoriesToServer(chapter_start=0, chapter_count=0):
     # loop edge chapter in input folders
     for chapter_title in sorted_alphanumeric(os.listdir(inputFolders)):
         logging.info('------------------------------------------------')
-        logging.info(f'Load "{chapter_title}" from inputFolders')
+        logging.info(f'Loading "{chapter_title}" from inputFolders')
 
         # default chapter start and count = 0. get all chapter in input folders
         if chapter_start == 0 or chapter_count == 0:
@@ -173,25 +141,67 @@ def multiPostStoriesToServer(chapter_start=0, chapter_count=0):
         else:
             logging.error(
                 f'An error white get "{chapter_title}" process ID to list')
-            break
-
-    # loop edge processID and check process ID status
-    for chapter_title, processID in list_procesIDs.items():
-        logging.info('------------------------------------------------')
-        audio_process_url = checkAudioProcessStatus(chapter_title, processID)
-        if not audio_process_url:
-            logging.error(
-                f'An error white add "{chapter_title}" URL to list_processID_url')
-            break
-        logging.info(
-            'Adding {chapter_title} process URL to audioProcess_url')
-        audioProcess_url[chapter_title] = audio_process_url
-
-    # return chapter_title and audio process ID url
-    return audioProcess_url
+            return False
+    return list_procesIDs
 
 
-# download story progress Bar
+def timeSleepAnimation(time_sleep):
+    for i in range(1, time_sleep):
+        sys.stdout.write(
+            f"\r {i * '.'}")
+        time.sleep(1)
+    print('\n')
+
+
+def checkAudioProcessStatus(chapter_title='', processID_url='', end_count=10, time_sleep=5):
+    if not processID_url:
+        logging.error(
+            'processID_url is empy. Please check post story to server')
+        return False
+
+    processID_url = f'{speech_base_url}/{processID_url}'
+    request_count = 0
+
+    while True:
+        try:
+            logging.info(
+                f'Stating request "{chapter_title}" to check process status')
+            processID_respone = requests.get(
+                url=processID_url, headers=speech_headers)
+            if processID_respone.status_code == 200 or processID_respone.status_code == 201:
+                logging.info(
+                    f'Success request to check "{chapter_title}" process ID')
+                if processID_respone.json()['status'] == 'Succeeded':
+                    logging.info(f'"{chapter_title}" status is Succeeded')
+                    return processID_respone.json()['outputs']['result']
+                elif processID_respone.json()['status'] == 'Failed':
+                    logging.error(
+                        f' Faild to check "{chapter_title}" status: {processID_respone.status_code}')
+                    logging.error(processID_respone.json())
+                    return False
+                logging.warning(
+                    f" \"{chapter_title}\" status is: {processID_respone.json()['status']}. Try again ....")
+                timeSleepAnimation(time_sleep)
+                continue
+            else:
+                logging.info(
+                    f'Faild to request "{chapter_title}" http to server with status code: {processID_respone.status_code}. Try again....')
+                timeSleepAnimation(time_sleep)
+                continue
+        except Exception as message:
+            logging.warning('Someting went wrong. Try again...')
+            logging.warning(message)
+            timeSleepAnimation(time_sleep)
+            pass
+        finally:
+            request_count += 1
+            if request_count >= end_count:
+                logging.error(
+                    'Too many attempt faild to request. Check API, network and try again')
+                return False
+
+
+# download with congpress Bar
 def handleDownloadProgressBar(audio_response):
     total = int(audio_response.headers.get('content-length', 0))
     initChunk = 0
@@ -209,38 +219,53 @@ def handleDownloadProgressBar(audio_response):
     print('\n')
     return audioZipContent
 
-
 # save auido result to zip folder
+
+
 def handleSaveStory(chapter_title, audio_content):
+
+    # remove all old zip file in zip folders
+    if len(os.listdir(zipFolders)) != 0:
+        for item in os.listdir(zipFolders):
+            os.remove(os.path.join(zipFolders, item))
+
     audio_name = chapter_title.removesuffix('.txt')
     audio_path = os.path.join(zipFolders, f'{audio_name}.zip')
     with open(audio_path, 'wb') as f:
         f.write(audio_content)
+    logging.info(f'Saving "{audio_name}.zip" was success ')
+    return True
 
 
 # download story was zip file
-def handleDownloadStory(chapter_title, audio_url):
+def handleDownloadStory(chapter_title, audio_url, time_sleep=5):
     audio_name = chapter_title.removesuffix('.txt')
     request_count = 0
     while True:
         try:
-            logging.info(f'Statting download "{chapter_title}" as zip file')
+            logging.info(f'Downloading "{audio_name}" as zip file')
             audio_response = requests.get(
                 audio_url, headers=speech_headers, stream=True)
+
             if not audio_response.status_code == 200 or audio_response.status_code == 201:
                 logging.warning(
-                    'Fail to request server to download audio. Retry again...')
-                time.sleep(5)
+                    'Fail to connect server to download audio. Retry again...')
+                timeSleepAnimation(time_sleep)
                 continue
+
             audio_zipContent = handleDownloadProgressBar(audio_response)
-            handleSaveStory(chapter_title, audio_zipContent)
-            logging.info(f'Downloading "{audio_name}.zip" was success ')
+            save_story_result = handleSaveStory(
+                chapter_title, audio_zipContent)
+
+            if not save_story_result:
+                logging.error('An error when save story')
+                return False
             return True
 
         except Exception as message:
             logging.warning(message)
             logging.warning(f'Someting went wrong. Retry download audio....')
-            time.sleep(5)
+            timeSleepAnimation(time_sleep)
             continue
 
         finally:
@@ -251,14 +276,25 @@ def handleDownloadStory(chapter_title, audio_url):
                 return False
 
 
+# extract story from zip folder
 def handleExtractStory(chapter_title):
+
+    # remove all old audio file in folders
+    if len(os.listdir(audioFolders)) != 0:
+        for item in os.listdir(audioFolders):
+            os.remove(os.path.join(audioFolders, item))
+
     try:
         audio_name = chapter_title.removesuffix('.txt')
+        logging.info(
+            f'Extracting {audio_name} from zipFolders and save to audioFolders')
+
         audioZip_path = os.path.join(zipFolders, f'{audio_name}.zip')
         audio_path = os.path.join(audioFolders, f'{audio_name}.wav')
         with ZipFile(f'{audioZip_path}', 'r') as archiveFile:
             with archiveFile.open(archiveFile.namelist()[1]) as file:
                 audio_content = file.read()
+
         with open(audio_path, 'wb') as f:
             f.write(audio_content)
         logging.info(f'Saving "{audio_name}.wav" was success')
@@ -266,27 +302,31 @@ def handleExtractStory(chapter_title):
     except Exception as message:
         logging.error(message)
         return False
-# download story,  attract zip file and save story to audioFolders
 
 
-def handleSaveStories(chapter_start=0, chapter_count=0):
-    list_audio_urls = multiPostStoriesToServer(chapter_start, chapter_count)
-    for chapter_title, chapter_url in list_audio_urls.items():
+# download story and extract to audio folder
+def downloadListStories():
+    list_procesIDs = multiPostStoriesToServer()
+    if not list_procesIDs:
+        logging.error('Handling error. Stop code')
+        return False
+    # loop edge processID and check process ID status
+    for chapter_title, processID in list_procesIDs.items():
+        logging.info('------------------------------------------------')
+        audio_url = checkAudioProcessStatus(chapter_title, processID)
+        if not audio_url:
+            logging.error(
+                f'An error white add "{chapter_title}" URL to list_processID_url')
+            return False
+        handleDownloadStory(chapter_title, audio_url)
 
-        logging.info('--------------------------------------------------')
-        # download story
-        audio_name = chapter_title.removesuffix('.txt')
-        audio_zipFile = handleDownloadStory(chapter_title, chapter_url)
-
-        if not audio_zipFile:
-            logging.error('Download audio was error. stop')
-            exit(1)
-
-        # save zip file to zip folder
-        audio_save = handleExtractStory(chapter_title)
-        if not audio_save:
-            logging.error('Save audio was error. stop')
-            exit(1)
+        # extract zip file and save audio to audioFolders
+        handleExtract_result = handleExtractStory(chapter_title)
+        if not audio_url:
+            logging.error(
+                f'An error white extract "{chapter_title}". Stop')
+            return False
+    return True
 
 
-handleSaveStories()
+downloadListStories()

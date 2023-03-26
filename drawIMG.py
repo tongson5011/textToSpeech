@@ -3,11 +3,16 @@ import os
 from global_config import *
 from global_functions import *
 
-for item in os.listdir(imgFolders):
-    os.remove(os.path.join(imgFolders, item))
+# draw img
 
 
 def drawIMG(img_start=1, img_counts=1, img_step=4):
+
+    # delete all old img in folders
+    if len(os.listdir(imgFolders)) != 0:
+        for item in os.listdir(imgFolders):
+            os.remove(os.path.join(imgFolders, item))
+
     if img_counts == 0:
         raise
     img_end = img_start + img_counts * img_step

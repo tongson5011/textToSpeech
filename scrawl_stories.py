@@ -90,4 +90,4 @@ def crawl_stories(chapter_start=1, chapter_counts=0):
     handle_crawl_chapter(chapter_start, chapter_lists)
 
 
-crawl_stories(chapter_start=11, chapter_counts=14)
+crawl_stories(chapter_start=20, chapter_counts=10)
